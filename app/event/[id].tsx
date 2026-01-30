@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, SafeAreaView, Platform, Alert, ActionSheetIOS } from "react-native";
 import { useLocalSearchParams, router, Stack } from "expo-router";
 import { Calendar, MapPin, ChevronLeft, Share2, Heart, Bell, Clock, Instagram, Facebook, Globe, UserPlus } from "lucide-react-native";
-import { mockEvents } from "@/mocks/events";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { handleError, NotFoundError } from "@/lib/error-handler";

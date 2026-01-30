@@ -1,18 +1,41 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Platform, Alert, Linking, ActionSheetIOS } from "react-native";
 import { ShoppingCart, Ticket, Calendar, MapPin, ChevronRight, Info, ChevronLeft, Wallet, Share2 } from "lucide-react-native";
 import { useCart } from "@/hooks/cart-context";
-import { mockEvents } from "@/mocks/events";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { COLORS } from "@/constants/colors";
 import QRCode from '@/components/QRCode';
 import { trpc } from '@/lib/trpc';
 import { shareTicket } from '@/lib/share-utils';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 
 export default function MyTicketsScreen() {
   const { cartItems, purchasedTickets, getTotalPrice, removeFromCart } = useCart();
   const [activeTab, setActiveTab] = useState<'cart' | 'purchased'>('purchased');
-  
+
+  const { data: eventsData, isLoading, error, refetch } = trpc.events.list.useQuery({});
+  const eventMap = useMemo(() => {
+    if (!eventsData) return new Map<string, any>();
+    const map = new Map<string, any>();
+    eventsData.forEach((e: any) => {
+      map.set(e.id, {
+        ...e,
+        date: new Date(e.date),
+        endDate: e.endDate ? new Date(e.endDate) : undefined,
+        venue: typeof e.venue === 'object' && e.venue ? e.venue : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof e.promoter === 'object' && e.promoter ? e.promoter : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      });
+    });
+    return map;
+  }, [eventsData]);
+
+  const getEventById = (id: string) => eventMap.get(id);
+  const getTicketType = (eventId: string, ticketTypeId: string) => {
+    const event = getEventById(eventId);
+    return event?.ticketTypes?.find((t: any) => t.id === ticketTypeId);
+  };
+
   const generateWalletPassMutation = trpc.tickets.generateWalletPass.useMutation();
 
   const formatDate = (date: Date) => {
@@ -23,12 +46,6 @@ export default function MyTicketsScreen() {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
-  };
-
-  const getEventById = (id: string) => mockEvents.find(e => e.id === id);
-  const getTicketType = (eventId: string, ticketTypeId: string) => {
-    const event = getEventById(eventId);
-    return event?.ticketTypes.find(t => t.id === ticketTypeId);
   };
   
   const handleAddToWallet = async (ticketId: string) => {
@@ -146,6 +163,21 @@ export default function MyTicketsScreen() {
       await shareTicket(shareParams);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner message="A carregar..." />
+      </View>
+    );
+  }
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={handleError(error)} onRetry={() => refetch()} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

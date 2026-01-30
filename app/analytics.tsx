@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,11 +19,51 @@ import {
   ArrowLeft,
 } from 'lucide-react-native';
 import { useUser } from '@/hooks/user-context';
-import { mockEvents } from '@/mocks/events';
 import { Event } from '@/types/event';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 
 export default function Analytics() {
   const { user } = useUser();
+
+  const { data: profileByUser } = trpc.promoters.getByUserId.useQuery(
+    { userId: user?.id ?? '' },
+    { enabled: !!user?.id && user?.userType === 'promoter' }
+  );
+  const promoterId = profileByUser?.id ?? null;
+  const { data: eventsData, isLoading, error, refetch } = trpc.events.list.useQuery(
+    promoterId ? { promoterId } : (undefined as any),
+    { enabled: !!promoterId }
+  );
+
+  const promoterEvents: Event[] = useMemo(() => {
+    if (!eventsData) return [];
+    return eventsData.map((e: any) => ({
+      ...e,
+      date: new Date(e.date),
+      endDate: e.endDate ? new Date(e.endDate) : undefined,
+      venue: typeof e.venue === 'object' && e.venue
+        ? { id: (e.venue as any).id ?? '', name: (e.venue as any).name ?? '', address: (e.venue as any).address ?? '', city: (e.venue as any).city ?? '', capacity: (e.venue as any).capacity ?? 0 }
+        : { id: '', name: '', address: '', city: '', capacity: 0 },
+      promoter: typeof e.promoter === 'object' && e.promoter
+        ? { id: (e.promoter as any).id ?? '', name: (e.promoter as any).name ?? '', image: (e.promoter as any).image ?? '', description: (e.promoter as any).description ?? '', verified: !!(e.promoter as any).verified, followersCount: (e.promoter as any).followersCount ?? 0 }
+        : { id: user?.id ?? '', name: user?.name ?? 'Promotor', image: '', description: '', verified: false, followersCount: 0 },
+    })) as Event[];
+  }, [eventsData, user?.id, user?.name]);
+
+  const totalTicketsSold = promoterEvents.reduce((sum: number, event: Event) => {
+    const capacity = event.ticketTypes?.reduce((total: number, ticket: any) => total + (ticket.available ?? 0), 0) ?? 0;
+    return sum + capacity;
+  }, 0);
+
+  const totalRevenue = promoterEvents.reduce((sum: number, event: Event) => {
+    const revenue = (event.ticketTypes ?? []).reduce((total: number, ticket: any) => total + (ticket.available ?? 0) * (ticket.price ?? 0), 0);
+    return sum + revenue;
+  }, 0);
+
+  const totalViews = promoterEvents.length * 500;
+  const totalLikes = promoterEvents.length * 50;
 
   if (user?.userType !== 'promoter') {
     return (
@@ -32,21 +72,26 @@ export default function Analytics() {
       </View>
     );
   }
-
-  const promoterEvents = mockEvents.filter((event: Event) => event.promoter.name === user.name);
-  
-  const totalTicketsSold = promoterEvents.reduce((sum: number, event: Event) => {
-    const soldTickets = event.ticketTypes.reduce((total, ticket) => total + (ticket.available || 0), 0);
-    return sum + soldTickets;
-  }, 0);
-  
-  const totalRevenue = promoterEvents.reduce((sum: number, event: Event) => {
-    const revenue = event.ticketTypes.reduce((total, ticket) => total + (ticket.available || 0) * ticket.price, 0);
-    return sum + revenue;
-  }, 0);
-  
-  const totalViews = promoterEvents.reduce((sum: number, event: Event) => sum + (Math.floor(Math.random() * 1000) + 100), 0);
-  const totalLikes = promoterEvents.reduce((sum: number, event: Event) => sum + (Math.floor(Math.random() * 100) + 10), 0);
+  if (user?.id && profileByUser === undefined) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner message="A carregar perfil..." />
+      </View>
+    );
+  }
+  if (promoterId && error) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={handleError(error)} onRetry={() => refetch()} />
+      </View>
+    );
+  }
+  if (promoterId && isLoading) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner message="A carregar analytics..." />
+      </View>
+    );
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color = '#fff' }: any) => (
     <View style={styles.statCard}>
@@ -60,11 +105,11 @@ export default function Analytics() {
   );
 
   const EventCard = ({ event }: { event: Event }) => {
-    const soldTickets = Math.floor(Math.random() * 100) + 50;
-    const revenue = (Math.floor(Math.random() * 5000) + 1000);
-    const views = Math.floor(Math.random() * 1000) + 100;
-    const capacity = event.venue.capacity;
-    const percentage = Math.round((soldTickets / capacity) * 100);
+    const capacity = event.ticketTypes?.reduce((s: number, t: any) => s + (t.available ?? 0), 0) ?? event.venue?.capacity ?? 0;
+    const soldTickets = 0;
+    const revenue = 0;
+    const views = capacity ? 500 : 1;
+    const percentage = capacity ? Math.round((soldTickets / capacity) * 100) : 0;
     
     return (
       <TouchableOpacity
@@ -94,15 +139,15 @@ export default function Analytics() {
         <View style={styles.performanceMetrics}>
           <View style={styles.metricRow}>
             <Text style={styles.metricLabel}>Taxa de Conversão:</Text>
-            <Text style={styles.metricValue}>{((soldTickets / views) * 100).toFixed(1)}%</Text>
+            <Text style={styles.metricValue}>{views ? ((soldTickets / views) * 100).toFixed(1) : '0'}%</Text>
           </View>
           <View style={styles.metricRow}>
             <Text style={styles.metricLabel}>Receita por Visualização:</Text>
-            <Text style={styles.metricValue}>€{(revenue / views).toFixed(2)}</Text>
+            <Text style={styles.metricValue}>€{views ? (revenue / views).toFixed(2) : '0.00'}</Text>
           </View>
           <View style={styles.metricRow}>
             <Text style={styles.metricLabel}>Ticket Médio:</Text>
-            <Text style={styles.metricValue}>€{(revenue / soldTickets).toFixed(2)}</Text>
+            <Text style={styles.metricValue}>€{soldTickets ? (revenue / soldTickets).toFixed(2) : '0.00'}</Text>
           </View>
         </View>
         

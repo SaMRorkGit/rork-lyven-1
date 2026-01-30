@@ -31,7 +31,9 @@ import {
   CreditCard,
   ShoppingBag,
 } from 'lucide-react-native';
-import { mockEvents } from '@/mocks/events';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 
 interface TicketBuyer {
   id: string;
@@ -124,14 +126,46 @@ export default function BuyerDetailsScreen() {
   const { id, eventId } = useLocalSearchParams<{ id: string; eventId: string }>();
   const [note, setNote] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
-  
+
+  const { data: eventData, isLoading, error, refetch } = trpc.events.get.useQuery(
+    { id: eventId ?? '' },
+    { enabled: !!eventId }
+  );
+  const event = eventData
+    ? {
+        ...eventData,
+        date: new Date(eventData.date),
+        endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+        venue: typeof eventData.venue === 'object' && eventData.venue
+          ? { id: (eventData.venue as any).id ?? '', name: (eventData.venue as any).name ?? '', address: (eventData.venue as any).address ?? '', city: (eventData.venue as any).city ?? '', capacity: (eventData.venue as any).capacity ?? 0 }
+          : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof eventData.promoter === 'object' && eventData.promoter
+          ? { id: (eventData.promoter as any).id ?? '', name: (eventData.promoter as any).name ?? '', image: (eventData.promoter as any).image ?? '', description: (eventData.promoter as any).description ?? '', verified: !!(eventData.promoter as any).verified, followersCount: (eventData.promoter as any).followersCount ?? 0 }
+          : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      }
+    : null;
+
   const buyer = mockBuyersData[id || '1'];
-  const event = mockEvents.find(e => e.id === eventId);
-  
+
   if (!buyer) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.errorText}>Comprador não encontrado</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner message="A carregar evento..." />
+      </SafeAreaView>
+    );
+  }
+  if (error || !event) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
       </SafeAreaView>
     );
   }

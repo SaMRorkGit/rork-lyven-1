@@ -25,7 +25,9 @@ import {
   TrendingUp
 } from 'lucide-react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
-import { mockEvents } from '@/mocks/events';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 import { useCart } from '@/hooks/cart-context';
 
 interface TicketBuyer {
@@ -47,10 +49,25 @@ export default function EventBuyersScreen() {
   const { purchasedTickets } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterValidated, setFilterValidated] = useState<'all' | 'validated' | 'pending'>('all');
-  
-  const event = mockEvents.find(e => e.id === id);
-  
-  // Mock buyers data - in real app this would come from API
+
+  const { data: eventData, isLoading, error, refetch } = trpc.events.get.useQuery(
+    { id: id ?? '' },
+    { enabled: !!id }
+  );
+  const event = eventData
+    ? {
+        ...eventData,
+        date: new Date(eventData.date),
+        endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+        venue: typeof eventData.venue === 'object' && eventData.venue
+          ? { id: (eventData.venue as any).id ?? '', name: (eventData.venue as any).name ?? '', address: (eventData.venue as any).address ?? '', city: (eventData.venue as any).city ?? '', capacity: (eventData.venue as any).capacity ?? 0 }
+          : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof eventData.promoter === 'object' && eventData.promoter
+          ? { id: (eventData.promoter as any).id ?? '', name: (eventData.promoter as any).name ?? '', image: (eventData.promoter as any).image ?? '', description: (eventData.promoter as any).description ?? '', verified: !!(eventData.promoter as any).verified, followersCount: (eventData.promoter as any).followersCount ?? 0 }
+          : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      }
+    : null;
+
   const mockBuyers: TicketBuyer[] = [
     {
       id: '1',
@@ -103,6 +120,21 @@ export default function EventBuyersScreen() {
       validatedAt: new Date('2025-02-15T20:15:00')
     }
   ];
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner message="A carregar evento..." />
+      </View>
+    );
+  }
+  if (error || !event) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
+      </View>
+    );
+  }
   
   const filteredBuyers = useMemo(() => {
     let buyers = mockBuyers;

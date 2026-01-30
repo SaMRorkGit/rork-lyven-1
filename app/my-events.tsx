@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,12 +23,43 @@ import {
   Clock,
 } from 'lucide-react-native';
 import { useUser } from '@/hooks/user-context';
-import { mockEvents } from '@/mocks/events';
 import { Event } from '@/types/event';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 
 export default function MyEvents() {
-  const { user, promoterProfile } = useUser();
+  const { user } = useUser();
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
+
+  const { data: profileByUser } = trpc.promoters.getByUserId.useQuery(
+    { userId: user?.id ?? '' },
+    { enabled: !!user?.id && user?.userType === 'promoter' }
+  );
+  const promoterId = profileByUser?.id ?? null;
+  const { data: eventsData, isLoading, error, refetch } = trpc.events.list.useQuery(
+    promoterId ? { promoterId } : (undefined as any),
+    { enabled: !!promoterId }
+  );
+
+  const allEvents: Event[] = useMemo(() => {
+    if (!eventsData) return [];
+    return eventsData.map((e: any) => ({
+      ...e,
+      date: new Date(e.date),
+      endDate: e.endDate ? new Date(e.endDate) : undefined,
+      venue: typeof e.venue === 'object' && e.venue
+        ? { id: (e.venue as any).id ?? '', name: (e.venue as any).name ?? '', address: (e.venue as any).address ?? '', city: (e.venue as any).city ?? '', capacity: (e.venue as any).capacity ?? 0 }
+        : { id: '', name: '', address: '', city: '', capacity: 0 },
+      promoter: typeof e.promoter === 'object' && e.promoter
+        ? { id: (e.promoter as any).id ?? '', name: (e.promoter as any).name ?? '', image: (e.promoter as any).image ?? '', description: (e.promoter as any).description ?? '', verified: !!(e.promoter as any).verified, followersCount: (e.promoter as any).followersCount ?? 0 }
+        : { id: user?.id ?? '', name: user?.name ?? 'Promotor', image: '', description: '', verified: false, followersCount: 0 },
+    })) as Event[];
+  }, [eventsData, user?.id, user?.name]);
+
+  const now = new Date();
+  const upcomingEvents = allEvents.filter(event => new Date(event.date) >= now);
+  const pastEvents = allEvents.filter(event => new Date(event.date) < now);
 
   if (user?.userType !== 'promoter') {
     return (
@@ -38,153 +69,27 @@ export default function MyEvents() {
     );
   }
 
-  const demoPromoterEvents: Event[] = [
-    {
-      id: 'demo-1',
-      title: 'Arctic Monkeys',
-      date: new Date('2025-02-15T21:00:00'),
-      category: 'music',
-      image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
-      artists: [
-        {
-          id: 'a1',
-          name: 'Arctic Monkeys',
-          genre: 'Rock',
-          image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800'
-        }
-      ],
-      venue: {
-        id: 'v1',
-        name: 'Coliseu dos Recreios',
-        address: 'R. Portas de Santo Antão',
-        city: 'Lisboa',
-        capacity: 1500
-      },
-      promoter: {
-        id: 'p1',
-        name: user.name || 'Promotor',
-        image: 'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 1200
-      },
-      ticketTypes: [
-        {
-          id: 't1',
-          name: 'Geral',
-          price: 39,
-          available: 1200,
-          maxPerPerson: 4
-        }
-      ],
-      isSoldOut: false,
-      isFeatured: true,
-      tags: ['rock', 'indie'],
-      description: 'Show da banda britânica Arctic Monkeys em Lisboa',
-      coordinates: { latitude: 38.7223, longitude: -9.1393 }
-    },
-    {
-      id: 'demo-2',
-      title: 'Festival NOS Alive 2026',
-      date: new Date('2026-07-10T16:00:00'),
-      category: 'festival',
-      image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800',
-      artists: [
-        {
-          id: 'a2',
-          name: 'Vários Artistas',
-          genre: 'Múltiplos',
-          image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800'
-        }
-      ],
-      venue: {
-        id: 'v2',
-        name: 'Passeio Marítimo de Algés',
-        address: 'Passeio Marítimo de Algés',
-        city: 'Oeiras',
-        capacity: 55000
-      },
-      promoter: {
-        id: 'p1',
-        name: user.name || 'Promotor',
-        image: 'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 1200
-      },
-      ticketTypes: [
-        {
-          id: 't2',
-          name: 'Passe 3 Dias',
-          price: 90,
-          available: 45000,
-          maxPerPerson: 4
-        }
-      ],
-      isSoldOut: false,
-      isFeatured: true,
-      tags: ['festival', 'verão'],
-      description: 'O maior festival de música do verão',
-      coordinates: { latitude: 38.6931, longitude: -9.2369 }
-    },
-    {
-      id: 'demo-3',
-      title: 'Concerto na MEO Arena',
-      date: new Date('2026-08-20T20:00:00'),
-      category: 'music',
-      image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
-      artists: [
-        {
-          id: 'a3',
-          name: 'Artista Internacional',
-          genre: 'Pop',
-          image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800'
-        }
-      ],
-      venue: {
-        id: 'v3',
-        name: 'MEO Arena',
-        address: 'Rossio dos Olivais',
-        city: 'Lisboa',
-        capacity: 12000
-      },
-      promoter: {
-        id: 'p1',
-        name: user.name || 'Promotor',
-        image: 'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 1200
-      },
-      ticketTypes: [
-        {
-          id: 't3',
-          name: 'Geral',
-          price: 45,
-          available: 9500,
-          maxPerPerson: 6
-        }
-      ],
-      isSoldOut: false,
-      isFeatured: false,
-      tags: ['pop', 'internacional'],
-      description: 'Grande evento musical na MEO Arena',
-      coordinates: { latitude: 38.7684, longitude: -9.0937 }
-    }
-  ];
-
-  const promoterEvents = mockEvents.filter((event: Event) => {
-    if (promoterProfile?.companyName) {
-      return event.promoter.name === promoterProfile.companyName;
-    }
-    return event.promoter.name === user.name;
-  });
-
-  const allEvents = [...demoPromoterEvents, ...promoterEvents];
-  const now = new Date();
-  
-  const upcomingEvents = allEvents.filter(event => new Date(event.date) >= now);
-  const pastEvents = allEvents.filter(event => new Date(event.date) < now);
+  if (user?.id && profileByUser === undefined) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner message="A carregar perfil..." />
+      </SafeAreaView>
+    );
+  }
+  if (promoterId && error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ErrorState message={handleError(error)} onRetry={() => refetch()} />
+      </SafeAreaView>
+    );
+  }
+  if (promoterId && isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingSpinner message="A carregar eventos..." />
+      </SafeAreaView>
+    );
+  }
 
   const handleDeleteEvent = (eventId: string) => {
     Alert.alert(
@@ -207,11 +112,10 @@ export default function MyEvents() {
   };
 
   const EventCard = ({ event }: { event: Event }) => {
-    const isDemoEvent = event.id === 'demo-1';
-    const soldTickets = isDemoEvent ? 1250 : Math.floor(Math.random() * 100) + 50;
-    const revenue = isDemoEvent ? 48750 : Math.floor(Math.random() * 5000) + 1000;
-    const views = isDemoEvent ? 8450 : Math.floor(Math.random() * 1000) + 100;
-    const totalTickets = isDemoEvent ? 1500 : event.venue.capacity;
+    const totalTickets = event.ticketTypes?.reduce((s: number, t: any) => s + (t.available ?? 0), 0) ?? event.venue?.capacity ?? 0;
+    const soldTickets = 0;
+    const revenue = 0;
+    const views = 0;
 
     return (
       <View style={styles.eventCard}>
@@ -301,7 +205,7 @@ export default function MyEvents() {
               />
             </View>
             <Text style={styles.progressText}>
-              {Math.round((soldTickets / totalTickets) * 100)}% vendidos
+              {Math.round((soldTickets / (totalTickets || 1)) * 100)}% vendidos
             </Text>
           </View>
         </View>

@@ -35,7 +35,6 @@ import { useTheme } from '@/hooks/theme-context';
 import { useUser } from '@/hooks/user-context';
 import AuthGuard from '@/components/AuthGuard';
 import { Event } from '@/types/event';
-import { mockEvents } from '@/mocks/events';
 import { trpcClient } from '@/lib/trpc';
 import { trpc } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
@@ -755,110 +754,36 @@ function AdminUsersContent() {
 
 function PromoterEventsContent() {
   const insets = useSafeAreaInsets();
-  const { user, promoterProfile } = useUser();
+  const { user } = useUser();
   const { colors, isDark } = useTheme();
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'past'>('upcoming');
 
-  const demoPromoterEvents: Event[] = [
-    {
-      id: 'demo-1',
-      title: 'Arctic Monkeys',
-      date: new Date('2025-02-15T21:00:00'),
-      category: 'music',
-      image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
-      venue: {
-        id: 'venue-1',
-        name: 'Coliseu dos Recreios',
-        address: 'R. Portas de Santo Antão, 1150-268 Lisboa',
-        city: 'Lisboa',
-        capacity: 1500
-      },
-      promoter: {
-        id: user?.id || 'promoter-1',
-        name: user?.name || 'Promotor',
-        image: 'https://via.placeholder.com/100',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 0
-      },
-      description: 'Show da banda britânica Arctic Monkeys em Lisboa',
-      ticketTypes: [{ id: '1', name: 'Geral', price: 39, available: 250, maxPerPerson: 4 }],
-      isFeatured: false,
-      isSoldOut: false,
-      artists: [{ id: 'artist-1', name: 'Arctic Monkeys', genre: 'Rock', image: 'https://via.placeholder.com/100' }],
-      tags: ['música', 'rock'],
-      coordinates: { latitude: 38.7223, longitude: -9.1393 }
-    },
-    {
-      id: 'demo-2',
-      title: 'Festival NOS Alive 2025',
-      date: new Date('2025-07-10T16:00:00'),
-      category: 'festival',
-      image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800',
-      venue: {
-        id: 'venue-2',
-        name: 'Passeio Marítimo de Algés',
-        address: 'Passeio Marítimo de Algés, 1495-165 Algés',
-        city: 'Algés',
-        capacity: 55000
-      },
-      promoter: {
-        id: user?.id || 'promoter-1',
-        name: user?.name || 'Promotor',
-        image: 'https://via.placeholder.com/100',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 0
-      },
-      description: 'O maior festival de música do verão',
-      ticketTypes: [{ id: '1', name: 'Geral', price: 90, available: 40000, maxPerPerson: 6 }],
-      isFeatured: false,
-      isSoldOut: false,
-      artists: [],
-      tags: ['festival', 'música', 'verão'],
-      coordinates: { latitude: 38.6931, longitude: -9.2369 }
-    },
-    {
-      id: 'demo-3',
-      title: 'Concerto na MEO Arena',
-      date: new Date('2025-08-20T20:00:00'),
-      category: 'music',
-      image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
-      venue: {
-        id: 'venue-3',
-        name: 'MEO Arena',
-        address: 'Rossio dos Olivais, 1990-231 Lisboa',
-        city: 'Lisboa',
-        capacity: 12000
-      },
-      promoter: {
-        id: user?.id || 'promoter-1',
-        name: user?.name || 'Promotor',
-        image: 'https://via.placeholder.com/100',
-        description: 'Promotor de eventos',
-        verified: true,
-        followersCount: 0
-      },
-      description: 'Grande evento musical na MEO Arena',
-      ticketTypes: [{ id: '1', name: 'Geral', price: 45, available: 12000, maxPerPerson: 4 }],
-      isFeatured: false,
-      isSoldOut: false,
-      artists: [],
-      tags: ['música', 'concerto'],
-      coordinates: { latitude: 38.7684, longitude: -9.0937 }
-    }
-  ];
+  const { data: profileByUser } = trpc.promoters.getByUserId.useQuery(
+    { userId: user?.id ?? '' },
+    { enabled: !!user?.id }
+  );
+  const promoterId = profileByUser?.id ?? null;
+  const { data: eventsData, isLoading, error, refetch } = trpc.events.list.useQuery(
+    promoterId ? { promoterId } : (undefined as any),
+    { enabled: !!promoterId }
+  );
 
-  const promoterEvents = mockEvents.filter((event: Event) => {
-    if (promoterProfile?.companyName) {
-      return event.promoter.name === promoterProfile.companyName;
-    }
-    return event.promoter.name === user?.name;
-  });
+  const allEvents: Event[] = useMemo(() => {
+    if (!eventsData) return [];
+    return eventsData.map((e: any) => ({
+      ...e,
+      date: new Date(e.date),
+      endDate: e.endDate ? new Date(e.endDate) : undefined,
+      venue: typeof e.venue === 'object' && e.venue
+        ? { id: (e.venue as any).id ?? '', name: (e.venue as any).name ?? '', address: (e.venue as any).address ?? '', city: (e.venue as any).city ?? '', capacity: (e.venue as any).capacity ?? 0 }
+        : { id: '', name: '', address: '', city: '', capacity: 0 },
+      promoter: typeof e.promoter === 'object' && e.promoter
+        ? { id: (e.promoter as any).id ?? '', name: (e.promoter as any).name ?? '', image: (e.promoter as any).image ?? '', description: (e.promoter as any).description ?? '', verified: !!(e.promoter as any).verified, followersCount: (e.promoter as any).followersCount ?? 0 }
+        : { id: user?.id ?? '', name: user?.name ?? 'Promotor', image: '', description: '', verified: false, followersCount: 0 },
+    })) as Event[];
+  }, [eventsData, user?.id, user?.name]);
 
-  const allEvents = [...demoPromoterEvents, ...promoterEvents];
   const now = new Date();
-  
   const upcomingEvents = allEvents.filter(event => new Date(event.date) >= now);
   const pastEvents = allEvents.filter(event => new Date(event.date) < now);
 
@@ -883,11 +808,10 @@ function PromoterEventsContent() {
   };
 
   const EventCard = ({ event }: { event: Event }) => {
-    const isDemoEvent = event.id === 'demo-1';
-    const soldTickets = isDemoEvent ? 1250 : Math.floor(Math.random() * 100) + 50;
-    const revenue = isDemoEvent ? 48750 : Math.floor(Math.random() * 5000) + 1000;
-    const views = isDemoEvent ? 8450 : Math.floor(Math.random() * 1000) + 100;
-    const totalTickets = isDemoEvent ? 1500 : event.venue.capacity;
+    const totalTickets = event.ticketTypes?.reduce((s: number, t: any) => s + (t.available ?? 0), 0) ?? event.venue?.capacity ?? 0;
+    const soldTickets = 0;
+    const revenue = 0;
+    const views = 0;
 
     return (
       <View style={[styles.eventCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -972,12 +896,12 @@ function PromoterEventsContent() {
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${Math.min((soldTickets / totalTickets) * 100, 100)}%`, backgroundColor: colors.primary }
+                  { width: `${Math.min((soldTickets / (totalTickets || 1)) * 100, 100)}%`, backgroundColor: colors.primary }
                 ]} 
               />
             </View>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-              {Math.round((soldTickets / totalTickets) * 100)}% vendidos
+              {Math.round((soldTickets / (totalTickets || 1)) * 100)}% vendidos
             </Text>
           </View>
         </View>
@@ -1001,6 +925,28 @@ function PromoterEventsContent() {
   );
 
   const currentEvents = selectedTab === 'upcoming' ? upcomingEvents : pastEvents;
+
+  if (user?.id && profileByUser === undefined) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <LoadingSpinner message="A carregar perfil..." />
+      </View>
+    );
+  }
+  if (promoterId && error) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <ErrorState message={handleError(error)} onRetry={() => refetch()} />
+      </View>
+    );
+  }
+  if (promoterId && isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        <LoadingSpinner message="A carregar eventos..." />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>

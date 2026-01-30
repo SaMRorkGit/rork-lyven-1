@@ -25,7 +25,9 @@ import {
   Download,
   ChevronRight,
 } from 'lucide-react-native';
-import { mockEvents } from '@/mocks/events';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -51,8 +53,24 @@ export default function PromoterEventScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterValidated, setFilterValidated] = useState<'all' | 'validated' | 'pending'>('all');
   const [showPendingBuyers, setShowPendingBuyers] = useState(false);
-  
-  const event = mockEvents.find(e => e.id === id);
+
+  const { data: eventData, isLoading, error, refetch } = trpc.events.get.useQuery(
+    { id: id ?? '' },
+    { enabled: !!id }
+  );
+  const event = eventData
+    ? {
+        ...eventData,
+        date: new Date(eventData.date),
+        endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+        venue: typeof eventData.venue === 'object' && eventData.venue
+          ? { id: (eventData.venue as any).id ?? '', name: (eventData.venue as any).name ?? '', address: (eventData.venue as any).address ?? '', city: (eventData.venue as any).city ?? '', capacity: (eventData.venue as any).capacity ?? 0 }
+          : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof eventData.promoter === 'object' && eventData.promoter
+          ? { id: (eventData.promoter as any).id ?? '', name: (eventData.promoter as any).name ?? '', image: (eventData.promoter as any).image ?? '', description: (eventData.promoter as any).description ?? '', verified: !!(eventData.promoter as any).verified, followersCount: (eventData.promoter as any).followersCount ?? 0 }
+          : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      }
+    : null;
 
   const mockBuyers: TicketBuyer[] = [
     {
@@ -107,10 +125,17 @@ export default function PromoterEventScreen() {
     }
   ];
 
-  if (!event) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Evento não encontrado</Text>
+        <LoadingSpinner message="A carregar evento..." />
+      </SafeAreaView>
+    );
+  }
+  if (error || !event) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
       </SafeAreaView>
     );
   }

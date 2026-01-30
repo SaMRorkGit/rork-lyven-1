@@ -18,9 +18,10 @@ import {
 } from 'lucide-react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { mockEvents } from '@/mocks/events';
 import { useUser } from '@/hooks/user-context';
-import { trpcClient } from '@/lib/trpc';
+import { trpcClient, trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
 
 interface ScannedTicket {
   id: string;
@@ -42,9 +43,13 @@ export default function QRScannerScreen() {
   const [lastScannedTicket, setLastScannedTicket] = useState<ScannedTicket | null>(null);
   const [validatedTickets, setValidatedTickets] = useState<string[]>([]);
   const [isValidating, setIsValidating] = useState(false);
-  
-  const event = mockEvents.find(e => e.id === id);
-  
+
+  const { data: eventData, isLoading, error, refetch } = trpc.events.get.useQuery(
+    { id: id ?? '' },
+    { enabled: !!id }
+  );
+  const event = eventData ? { ...eventData, date: new Date(eventData.date), endDate: eventData.endDate ? new Date(eventData.endDate) : undefined } : null;
+
   useEffect(() => {
     if (!permission) {
       requestPermission();
@@ -184,11 +189,18 @@ export default function QRScannerScreen() {
       </View>
     );
   }
-  
-  if (!event) {
+
+  if (isLoading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Evento não encontrado</Text>
+        <LoadingSpinner message="A carregar evento..." />
+      </View>
+    );
+  }
+  if (error || !event) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
       </View>
     );
   }

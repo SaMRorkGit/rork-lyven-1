@@ -1,9 +1,11 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Platform, Animated, Image } from "react-native";
 import { useCart } from "@/hooks/cart-context";
-import { mockEvents } from "@/mocks/events";
 import { router, Stack } from "expo-router";
+import { trpc } from "@/lib/trpc";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { LoadingSpinner, ErrorState } from "@/components/LoadingStates";
+import { handleError } from "@/lib/error-handler";
 import { CreditCard, CheckCircle, X, Phone, Building2, ShoppingCart, ChevronRight, Shield, Lock, Ticket, Calendar, MapPin, Minus, Plus, Trash2, ArrowLeft, Check } from "lucide-react-native";
-import { useState, useRef, useEffect, useCallback } from "react";
 import * as Haptics from 'expo-haptics';
 import { useUser } from "@/hooks/user-context";
 import { useTheme } from "@/hooks/theme-context";
@@ -83,10 +85,30 @@ export default function CheckoutScreen() {
     return true;
   };
 
-  const getEventById = (id: string) => mockEvents.find(e => e.id === id);
+  const { data: eventsData, isLoading: isLoadingEvents, error: eventsError, refetch: refetchEvents } = trpc.events.list.useQuery(
+    {},
+    { enabled: cartItems.length > 0 }
+  );
+
+  const eventMap = useMemo(() => {
+    if (!eventsData) return new Map<string, any>();
+    const map = new Map<string, any>();
+    eventsData.forEach((e: any) => {
+      map.set(e.id, {
+        ...e,
+        date: new Date(e.date),
+        endDate: e.endDate ? new Date(e.endDate) : undefined,
+        venue: typeof e.venue === 'object' && e.venue ? e.venue : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof e.promoter === 'object' && e.promoter ? e.promoter : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      });
+    });
+    return map;
+  }, [eventsData]);
+
+  const getEventById = (id: string) => eventMap.get(id);
   const getTicketType = (eventId: string, ticketTypeId: string) => {
     const event = getEventById(eventId);
-    return event?.ticketTypes.find(t => t.id === ticketTypeId);
+    return event?.ticketTypes?.find((t: any) => t.id === ticketTypeId);
   };
 
   const subtotal = getTotalPrice();
@@ -631,6 +653,23 @@ export default function CheckoutScreen() {
       </Text>
     </Animated.View>
   );
+
+  if (cartItems.length > 0 && isLoadingEvents) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: 'Checkout', headerShown: true, headerStyle: { backgroundColor: colors.primary }, headerTintColor: colors.white }} />
+        <LoadingSpinner message="A carregar eventos..." />
+      </View>
+    );
+  }
+  if (cartItems.length > 0 && eventsError) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: 'Checkout', headerShown: true, headerStyle: { backgroundColor: colors.primary }, headerTintColor: colors.white }} />
+        <ErrorState message={handleError(eventsError)} onRetry={() => refetchEvents()} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

@@ -14,7 +14,6 @@ import { useUser } from "@/hooks/user-context";
 import { useTheme } from "@/hooks/theme-context";
 import { useI18n } from "@/hooks/i18n-context";
 import { router } from 'expo-router';
-import { mockEvents } from '@/mocks/events';
 import { Event } from '@/types/event';
 import { trpc } from '@/lib/trpc';
 import { handleError, isRetryableError } from '@/lib/error-handler';

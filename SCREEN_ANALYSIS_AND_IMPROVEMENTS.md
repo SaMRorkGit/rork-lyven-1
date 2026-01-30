@@ -1,5 +1,21 @@
 # 📱 LYVEN App - Screen Analysis & Improvement Guide
 
+## 🎯 Where We Stopped (Latest Update)
+
+**Done so far:**
+- **Login / Auth** – tRPC auth, email verification (Resend), paste code, 3-min expiry
+- **Home (Explore)** – tRPC `events.list` (featured + all), loading/error/skeleton, pull-to-refresh
+- **Event Details** – tRPC `events.get`, loading/error, share, calendar, favorites
+- **Search** – tRPC list + search, debounced query, loading/error
+- **Tickets** – tRPC `tickets.list` + `events.list`, QR display, pull-to-refresh, loading/error ✅ (was "NOT REVIEWED")
+- **Profile (Promoter)** – tRPC next event, promoter events, stats
+
+**All main screens now use tRPC for event data.** Remaining mock: buyer/ticket lists on promoter-event and event-buyers until backend supports list-by-event.
+
+**Next steps:** UX/performance items from the sections below; optional: backend list tickets/buyers by event for promoter screens.
+
+---
+
 ## 📋 Table of Contents
 1. [Overall App Flow](#overall-app-flow)
 2. [Screen-by-Screen Analysis](#screen-by-screen-analysis)
@@ -386,13 +402,12 @@ const { data: userStats } = trpc.users.getStats.useQuery();
 
 ### 7. **Tickets Screen** (`app/(tabs)/tickets.tsx`)
 
-#### ⚠️ **NOT REVIEWED YET** - Need to read this file
-
-**Expected Issues:**
-- Likely using mock data
-- No QR code display
-- No ticket transfer functionality
-- No add to wallet functionality
+#### ✅ **REVIEWED – DONE**
+- Uses tRPC `tickets.list` and `events.list` for real data
+- Loading/error states, pull-to-refresh
+- QR code display (expandable per ticket)
+- Navigates to ticket-details; cart tab with real data
+- **Optional later:** ticket transfer, add to wallet (see Missing Features)
 
 ---
 

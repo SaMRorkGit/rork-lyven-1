@@ -1,26 +1,44 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Heart, Calendar, Bell, Clock, MapPin, Star, Share2 } from 'lucide-react-native';
+import { Heart, Calendar, Bell, Clock, MapPin, Share2 } from 'lucide-react-native';
 import { useFavorites } from '@/hooks/favorites-context';
-import { mockEvents } from '@/mocks/events';
 import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
 import { useTheme } from '@/hooks/theme-context';
+import { trpc } from '@/lib/trpc';
+import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
+import { handleError } from '@/lib/error-handler';
+import { Event } from '@/types/event';
 
 export default function FavoritesScreen() {
   const { isFavorite, removeFromFavorites, hasReminder, shareEvent, addToCalendar } = useFavorites();
   const { colors } = useTheme();
-  
-  const favoriteEvents = useMemo(() => {
-    return mockEvents.filter(event => isFavorite(event.id));
-  }, [isFavorite]);
-  
+
+  const { data: allEventsData, isLoading, error, refetch } = trpc.events.list.useQuery({});
+
+  const favoriteEvents: Event[] = useMemo(() => {
+    if (!allEventsData) return [];
+    return allEventsData
+      .filter((e: any) => isFavorite(e.id))
+      .map((e: any) => ({
+        ...e,
+        date: new Date(e.date),
+        endDate: e.endDate ? new Date(e.endDate) : undefined,
+        venue: typeof e.venue === 'object' && e.venue
+          ? { id: (e.venue as any).id ?? '', name: (e.venue as any).name ?? '', address: (e.venue as any).address ?? '', city: (e.venue as any).city ?? '', capacity: (e.venue as any).capacity ?? 0 }
+          : { id: '', name: '', address: '', city: '', capacity: 0 },
+        promoter: typeof e.promoter === 'object' && e.promoter
+          ? { id: (e.promoter as any).id ?? '', name: (e.promoter as any).name ?? '', image: (e.promoter as any).image ?? '', description: (e.promoter as any).description ?? '', verified: !!(e.promoter as any).verified, followersCount: (e.promoter as any).followersCount ?? 0 }
+          : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+      })) as Event[];
+  }, [allEventsData, isFavorite]);
+
   const upcomingEvents = useMemo(() => {
     const now = new Date();
     return favoriteEvents
       .filter(event => event.date > now)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [favoriteEvents]);
-  
+
   const pastEvents = useMemo(() => {
     const now = new Date();
     return favoriteEvents
@@ -51,6 +69,24 @@ export default function FavoritesScreen() {
   const handleAddToCalendar = async (eventId: string) => {
     await addToCalendar(eventId);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: 'Favoritos', headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text }} />
+        <LoadingSpinner message="A carregar favoritos..." />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Stack.Screen options={{ title: 'Favoritos', headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.text }} />
+        <ErrorState message={handleError(error)} onRetry={() => refetch()} />
+      </View>
+    );
+  }
 
   if (favoriteEvents.length === 0) {
     return (
