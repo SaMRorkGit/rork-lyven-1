@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Heart, Calendar, Bell, Clock, MapPin, Share2 } from 'lucide-react-native';
+import { Heart, Calendar, Bell, Clock, MapPin, Share2, Star } from 'lucide-react-native';
 import { useFavorites } from '@/hooks/favorites-context';
 import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
