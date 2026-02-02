@@ -92,6 +92,7 @@ export default function Analytics() {
         <LoadingSpinner message="A carregar analytics..." />
       </View>
     );
+  }
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color = '#fff' }: any) => (
     <View style={styles.statCard}>
