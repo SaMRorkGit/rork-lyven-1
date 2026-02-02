@@ -189,6 +189,14 @@ export const MIGRATION_STATEMENTS = [
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`,
+  `CREATE TABLE IF NOT EXISTS event_views (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL REFERENCES events(id),
+    user_id TEXT,
+    session_id TEXT NOT NULL,
+    viewed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_active_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_events_category ON events(category)`,
   `CREATE INDEX IF NOT EXISTS idx_events_city ON events(venue_city)`,
   `CREATE INDEX IF NOT EXISTS idx_events_promoter ON events(promoter_id)`,

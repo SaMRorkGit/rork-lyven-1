@@ -11,21 +11,29 @@ export const getActiveViewers = publicProcedure
     })
   )
   .query(async ({ input }) => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    try {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-    const result = await db
-      .select({ count: count() })
-      .from(eventViews)
-      .where(
-        and(
-          eq(eventViews.eventId, input.eventId),
-          gt(eventViews.lastActiveAt, fiveMinutesAgo)
+      const result = await db
+        .select({ count: count() })
+        .from(eventViews)
+        .where(
+          and(
+            eq(eventViews.eventId, input.eventId),
+            gt(eventViews.lastActiveAt, fiveMinutesAgo)
+          )
         )
-      )
-      .get();
+        .get();
 
-    return {
-      eventId: input.eventId,
-      activeViewers: result?.count || 0,
-    };
+      return {
+        eventId: input.eventId,
+        activeViewers: result?.count ?? 0,
+      };
+    } catch (err: any) {
+      if (err?.message?.includes('no such table') || err?.message?.includes('event_views')) {
+        console.warn('[getActiveViewers] event_views table missing:', err?.message);
+        return { eventId: input.eventId, activeViewers: 0 };
+      }
+      throw err;
+    }
   });

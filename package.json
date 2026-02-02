@@ -40,6 +40,7 @@
     "better-sqlite3": "^12.4.1",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
+    "postgres": "^3.4.5",
     "expo": "^55.0.0-preview.6",
     "expo-blur": "~15.0.8",
     "expo-calendar": "~15.0.8",

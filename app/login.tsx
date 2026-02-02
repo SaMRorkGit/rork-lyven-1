@@ -43,7 +43,14 @@ export default function LoginScreen() {
   const loginMutation = trpc.auth.login.useMutation();
   const sendCodeMutation = trpc.auth.sendVerificationCode.useMutation();
 
-  // Check if backend is reachable when login screen mounts
+  const checkBackend = () => {
+    setBackendReachable(null);
+    const base = getBaseUrl();
+    fetch(`${base}/api/health`, { method: 'GET' })
+      .then((res) => setBackendReachable(res.ok))
+      .catch(() => setBackendReachable(false));
+  };
+
   useEffect(() => {
     let cancelled = false;
     const base = getBaseUrl();
@@ -250,15 +257,18 @@ export default function LoginScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent}>
             {backendReachable === false && (
               <View style={[styles.backendBanner, { backgroundColor: colors.error + '20', borderColor: colors.error }]}>
-                <Text style={[styles.backendBannerTitle, { color: colors.error }]}>Backend não acessível</Text>
+                <Text style={[styles.backendBannerTitle, { color: colors.error }]}>Serviço temporariamente indisponível</Text>
                 <Text style={[styles.backendBannerText, { color: colors.text }]}>
-                  Backend: {getBaseUrl()}
+                  O que pode fazer agora: aguarde um momento e toque em "Tentar novamente" abaixo. Se continuar, tente mais tarde ou contacte o suporte.
                 </Text>
-                <Text style={[styles.backendBannerText, { color: colors.text }]}>
-                  • No PC: execute no terminal: npm run start:all (ou npm run start:backend noutro terminal).
-                </Text>
-                <Text style={[styles.backendBannerText, { color: colors.text }]}>
-                  • No telemóvel (Expo Go): em .env use o IP do PC em vez de localhost (ex: http://192.168.1.5:3000), guarde e reinicie o Expo.
+                <TouchableOpacity
+                  style={[styles.retryBackendButton, { backgroundColor: colors.primary }]}
+                  onPress={checkBackend}
+                >
+                  <Text style={styles.retryBackendButtonText}>Tentar novamente</Text>
+                </TouchableOpacity>
+                <Text style={[styles.backendBannerSubtext, { color: colors.textSecondary }]}>
+                  (Para programadores: Backend {getBaseUrl()} — No PC: npm run start:all. No telemóvel: use o IP do PC em .env e reinicie o Expo.)
                 </Text>
               </View>
             )}
@@ -480,6 +490,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginBottom: SPACING.xs,
+  },
+  retryBackendButton: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.md,
+    alignSelf: 'flex-start',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  retryBackendButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  backendBannerSubtext: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
   },
   header: {
     alignItems: 'center',

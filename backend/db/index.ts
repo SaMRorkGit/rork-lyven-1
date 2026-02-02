@@ -1,28 +1,40 @@
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
-import * as schema from './schema';
+/**
+ * Database entry point: uses Supabase (PostgreSQL) when SUPABASE_DATABASE_URL is set,
+ * otherwise uses Turso (libSQL). Ensure env is loaded before this module (e.g. backend/server.ts loads load-env first).
+ */
+import * as supabaseDb from './supabase-db';
+import * as tursoDb from './turso-db';
 
-const tursoUrl = process.env.TURSO_DATABASE_URL;
-const tursoToken = process.env.TURSO_AUTH_TOKEN;
+const useSupabase = !!process.env.SUPABASE_DATABASE_URL;
+const active = useSupabase ? supabaseDb : tursoDb;
 
-if (!tursoUrl || !tursoToken) {
+if (!active.db) {
   throw new Error(
-    '❌ Missing Turso credentials!\n' +
-    'Please set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in your .env file\n' +
-    'See TURSO_SETUP.md for instructions'
+    useSupabase
+      ? 'SUPABASE_DATABASE_URL is required. Get it from Supabase Dashboard → Settings → Database → Connection string (URI).'
+      : 'TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required. Or set SUPABASE_DATABASE_URL to use Supabase as backend.'
   );
 }
 
-const client = createClient({
-  url: tursoUrl,
-  authToken: tursoToken,
-});
+export const db = active.db;
+export const executeRaw = active.executeRaw;
 
-export const db = drizzle(client, { schema });
-
-/** Run a single SQL statement (for migrations). Turso/libSQL allows only one statement per execute. */
-export async function executeRaw(sql: string): Promise<void> {
-  await client.execute(sql);
-}
-
-export * from './schema';
+export const users = active.users;
+export const promoters = active.promoters;
+export const promoterProfiles = active.promoterProfiles;
+export const promoterAuth = active.promoterAuth;
+export const events = active.events;
+export const tickets = active.tickets;
+export const advertisements = active.advertisements;
+export const following = active.following;
+export const eventStatistics = active.eventStatistics;
+export const pushTokens = active.pushTokens;
+export const notifications = active.notifications;
+export const verificationCodes = active.verificationCodes;
+export const paymentMethods = active.paymentMethods;
+export const eventViews = active.eventViews;
+export const affiliates = active.affiliates;
+export const affiliateSales = active.affiliateSales;
+export const eventBundles = active.eventBundles;
+export const priceAlerts = active.priceAlerts;
+export const identityVerifications = active.identityVerifications;
