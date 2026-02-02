@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#FF385C',
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: 'center' as const,
     marginTop: 50,
   },
 });
