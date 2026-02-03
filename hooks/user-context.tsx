@@ -1,42 +1,53 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, UserType, PromoterProfile } from '@/types/user';
 import { createDefaultUser } from '@/constants/onboarding';
 import { trpcClient } from '@/lib/trpc';
 
 export const [UserProvider, useUser] = createContextHook(() => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [promoterProfile, setPromoterProfile] = useState<PromoterProfile | null>(null);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!initialized) {
-      loadUser();
-      setInitialized(true);
-    }
-  }, [initialized]);
-
-  const loadUser = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user');
-      const promoterData = await AsyncStorage.getItem('promoterProfile');
+    mountedRef.current = true;
+    
+    const loadUser = async () => {
+      if (initializedRef.current) return;
+      initializedRef.current = true;
       
-      if (userData) {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        const promoterData = await AsyncStorage.getItem('promoterProfile');
         
-        if (parsedUser.userType === 'promoter' && promoterData) {
-          setPromoterProfile(JSON.parse(promoterData));
+        if (!mountedRef.current) return;
+        
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          
+          if (parsedUser.userType === 'promoter' && promoterData) {
+            setPromoterProfile(JSON.parse(promoterData));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      } finally {
+        if (mountedRef.current) {
+          setIsLoading(false);
         }
       }
-    } catch (error) {
-      console.error('Error loading user:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    
+    loadUser();
+    
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const saveUser = async (userData: User) => {
     try {
