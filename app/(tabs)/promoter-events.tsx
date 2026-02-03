@@ -127,8 +127,8 @@ function PromoterEventsContent() {
 
   const events = eventsList ?? [];
   const now = new Date();
-  const upcomingEvents = events.filter((e) => new Date(e.date) >= now);
-  const pastEvents = events.filter((e) => new Date(e.date) < now);
+  const upcomingEvents = events.filter((e: { date: string }) => new Date(e.date) >= now);
+  const pastEvents = events.filter((e: { date: string }) => new Date(e.date) < now);
   const currentEvents = selectedTab === 'upcoming' ? upcomingEvents : pastEvents;
 
   const onRetry = () => {
@@ -197,7 +197,7 @@ function PromoterEventsContent() {
         }
       >
         {currentEvents.length > 0 ? (
-          currentEvents.map((event) => (
+          currentEvents.map((event: ListEvent) => (
             <EventCard key={event.id} event={event as ListEvent} />
           ))
         ) : (

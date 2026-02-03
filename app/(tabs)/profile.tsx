@@ -133,7 +133,7 @@ export default function ProfileScreen() {
       { enabled: !!resolvedPromoterId }
     );
     const now = new Date();
-    const nextEventRaw = promoterEvents.find((e) => new Date(e.date) >= now);
+    const nextEventRaw = promoterEvents.find((e: { date: string }) => new Date(e.date) >= now);
     const nextEventId = nextEventRaw?.id;
     const { data: nextEventStats } = trpc.events.statistics.useQuery(
       { id: nextEventId ?? '' },

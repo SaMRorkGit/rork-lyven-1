@@ -22,7 +22,7 @@ export default function GetUsersScreen() {
           <View style={styles.results}>
             <Text style={styles.title}>Total de utilizadores: {data.users.length}</Text>
             
-            {data.users.map((user) => (
+            {data.users.map((user: { id: string; name: string; email: string; phone?: string | null; userType: string; createdAt: string; isOnboardingComplete: boolean }) => (
               <View key={user.id} style={styles.userCard}>
                 <Text style={styles.userName}>Nome: {user.name}</Text>
                 <Text style={styles.userEmail}>Email: {user.email}</Text>

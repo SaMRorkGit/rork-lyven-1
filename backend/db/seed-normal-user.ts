@@ -1,6 +1,8 @@
 import { db } from './index';
 import { users, promoterAuth } from './schema';
 
+const anyDb = db as any;
+
 export async function seedNormalUser() {
   console.log('🌱 Creating normal test user...');
 
@@ -23,7 +25,7 @@ export async function seedNormalUser() {
   };
 
   try {
-    await db.insert(users).values(normalUser).onConflictDoUpdate({
+    await anyDb.insert(users).values(normalUser).onConflictDoUpdate({
       target: users.email,
       set: normalUser,
     });
@@ -33,7 +35,7 @@ export async function seedNormalUser() {
   }
 
   try {
-    await db.insert(promoterAuth).values({
+    await anyDb.insert(promoterAuth).values({
       id: 'auth-normal-test',
       email: 'user',
       password: 'user',

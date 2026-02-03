@@ -59,7 +59,7 @@ export default function PromoterScreen() {
   });
 
   const promoterEvents = eventsQuery.data?.filter(
-    event => event.promoter?.id === promoterId
+    (event: { promoter?: { id: string } }) => event.promoter?.id === promoterId
   ) || [];
 
   const promoter = promoterEvents[0]?.promoter || {
@@ -112,8 +112,8 @@ export default function PromoterScreen() {
   };
 
   const upcomingEvents = promoterEvents
-    .filter(event => new Date(event.date) >= new Date())
-    .sort((a, b) => {
+    .filter((event: { date: string | Date }) => new Date(event.date) >= new Date())
+    .sort((a: { date: string | Date }, b: { date: string | Date }) => {
       const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date;
       const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date;
       return dateA.getTime() - dateB.getTime();
@@ -213,7 +213,7 @@ export default function PromoterScreen() {
                 </Text>
               </View>
             ) : (
-              upcomingEvents.map((event) => (
+              upcomingEvents.map((event: { id: string; image: string; title: string; date: string | Date; venue?: { name?: string; city?: string }; ticketTypes?: Array<{ price: number }> }) => (
                 <TouchableOpacity
                   key={event.id}
                   style={[styles.eventCard, { backgroundColor: colors.card }]}

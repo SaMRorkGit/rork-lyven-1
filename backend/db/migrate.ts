@@ -224,7 +224,7 @@ async function main() {
   }
   const client = createClient({ url: tursoUrl, authToken: tursoToken });
   console.log('🚀 Creating database tables on Turso...');
-  await runMigration((sql) => client.execute(sql));
+  await runMigration((sql) => client.execute(sql) as unknown as Promise<void>);
   console.log('✅ Database tables created successfully on Turso!');
 }
 

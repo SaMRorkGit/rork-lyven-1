@@ -16,7 +16,8 @@ if (!active.db) {
   );
 }
 
-export const db = active.db;
+// Export db with 'any' type to allow dual SQLite/PostgreSQL support without type conflicts
+export const db: any = active.db;
 export const executeRaw = active.executeRaw;
 
 export const users = active.users;

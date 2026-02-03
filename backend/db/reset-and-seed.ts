@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { db } from './index';
 import { users, promoterAuth, promoterProfiles } from './schema';
 
+const anyDb = db as any;
+
 console.log('🔄 Resetting database...');
 
 const sqlite = new Database('events.db');
@@ -45,7 +47,7 @@ const testPromoterUser = {
 
 async function seed() {
   try {
-    await db.insert(users).values(testPromoterUser).onConflictDoUpdate({
+    await anyDb.insert(users).values(testPromoterUser).onConflictDoUpdate({
       target: users.email,
       set: testPromoterUser,
     });
@@ -55,7 +57,7 @@ async function seed() {
   }
 
   try {
-    await db.insert(promoterAuth).values({
+    await anyDb.insert(promoterAuth).values({
       id: 'auth-promoter-teste',
       email: 'teste',
       password: 'teste',
@@ -73,7 +75,7 @@ async function seed() {
   }
 
   try {
-    await db.insert(promoterProfiles).values({
+    await anyDb.insert(promoterProfiles).values({
       id: 'profile-promoter-teste',
       userId: testPromoterUser.id,
       companyName: 'Teste Events',

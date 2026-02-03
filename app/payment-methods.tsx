@@ -414,7 +414,7 @@ export default function PaymentMethods() {
           </View>
         ) : (
           <View style={styles.methodsList}>
-            {methods.map((method) => {
+            {methods.map((method: PaymentMethod) => {
               const Icon = getMethodIcon(method.type);
               return (
                 <View key={method.id} style={[styles.methodCard, { backgroundColor: colors.card }]}>

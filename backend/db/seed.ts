@@ -1,5 +1,7 @@
 import { db } from './index';
 import { promoters, events, users, promoterAuth, promoterProfiles, following } from './schema';
+
+const anyDb = db as any;
 import { mockEvents } from './seed-data';
 
 export async function seedDatabase() {
@@ -24,7 +26,7 @@ export async function seedDatabase() {
   };
 
   try {
-    await db.insert(users).values(adminUser).onConflictDoUpdate({
+    await anyDb.insert(users).values(adminUser).onConflictDoUpdate({
       target: users.email,
       set: adminUser,
     });
@@ -34,7 +36,7 @@ export async function seedDatabase() {
   }
 
   try {
-    const authResult = await db.insert(promoterAuth).values({
+    const authResult = await anyDb.insert(promoterAuth).values({
       id: 'auth-admin-1',
       email: 'admin',
       password: 'Lyven12345678',
@@ -72,7 +74,7 @@ export async function seedDatabase() {
   };
 
   try {
-    await db.insert(users).values(testPromoterUser).onConflictDoUpdate({
+    await anyDb.insert(users).values(testPromoterUser).onConflictDoUpdate({
       target: users.email,
       set: testPromoterUser,
     });
@@ -82,7 +84,7 @@ export async function seedDatabase() {
   }
 
   try {
-    await db.insert(promoterAuth).values({
+    await anyDb.insert(promoterAuth).values({
       id: 'auth-promoter-teste',
       email: 'teste',
       password: 'teste',
@@ -100,7 +102,7 @@ export async function seedDatabase() {
   }
 
   try {
-    await db.insert(promoterProfiles).values({
+    await anyDb.insert(promoterProfiles).values({
       id: 'profile-promoter-teste',
       userId: testPromoterUser.id,
       companyName: 'Teste Events',
@@ -124,7 +126,7 @@ export async function seedDatabase() {
   }
 
   try {
-    await db.insert(promoters).values({
+    await anyDb.insert(promoters).values({
       id: 'profile-promoter-teste',
       name: 'Teste Events',
       image: 'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400',
@@ -189,12 +191,12 @@ export async function seedDatabase() {
   ];
 
   for (const promoter of promoterData) {
-    await db.insert(promoters).values(promoter).onConflictDoNothing();
+    await anyDb.insert(promoters).values(promoter).onConflictDoNothing();
   }
   console.log('✅ Promoters seeded');
 
   for (const event of mockEvents) {
-    await db.insert(events).values({
+    await anyDb.insert(events).values({
       id: event.id,
       title: event.title,
       artists: JSON.stringify(event.artists),
@@ -225,7 +227,7 @@ export async function seedDatabase() {
   console.log('✅ Events seeded');
 
   try {
-    await db.insert(events).values({
+    await anyDb.insert(events).values({
       id: 'event-promoter-teste-1',
       title: 'Arctic Monkeys - Teste Promoter',
       artists: JSON.stringify([{ id: 'a1', name: 'Arctic Monkeys', genre: 'Rock', image: 'https://via.placeholder.com/100' }]),
@@ -523,7 +525,7 @@ export async function seedDatabase() {
   ];
 
   for (const event of demoEvents) {
-    await db.insert(events).values(event).onConflictDoNothing();
+    await anyDb.insert(events).values(event).onConflictDoNothing();
   }
   console.log('✅ Demo events seeded');
 
@@ -546,7 +548,7 @@ export async function seedDatabase() {
   };
 
   try {
-    await db.insert(users).values(testUser).onConflictDoUpdate({
+    await anyDb.insert(users).values(testUser).onConflictDoUpdate({
       target: users.email,
       set: testUser,
     });
@@ -581,7 +583,7 @@ export async function seedDatabase() {
 
   for (const follow of testFollows) {
     try {
-      await db.insert(following).values(follow).onConflictDoNothing();
+      await anyDb.insert(following).values(follow).onConflictDoNothing();
     } catch {
       console.log('Follow já existe ou erro:', follow.id);
     }
