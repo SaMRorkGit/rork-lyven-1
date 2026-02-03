@@ -133,7 +133,9 @@ export default function BuyerDetailsScreen() {
   );
   const event = eventData
     ? {
-        ...eventData,
+        id: eventData.id,
+        title: eventData.title,
+        image: eventData.image,
         date: new Date(eventData.date),
         endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
         venue: typeof eventData.venue === 'object' && eventData.venue

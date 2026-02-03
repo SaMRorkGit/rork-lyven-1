@@ -13,8 +13,6 @@ import {
   ArrowLeft,
   Search,
   Download,
-  Mail,
-  Phone,
   Calendar,
   MapPin,
   CheckCircle,
@@ -22,13 +20,12 @@ import {
   QrCode,
   Users,
   DollarSign,
-  TrendingUp
 } from 'lucide-react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { trpc } from '@/lib/trpc';
 import { LoadingSpinner, ErrorState } from '@/components/LoadingStates';
 import { handleError } from '@/lib/error-handler';
-import { useCart } from '@/hooks/cart-context';
+
 
 interface TicketBuyer {
   id: string;
@@ -46,7 +43,6 @@ interface TicketBuyer {
 
 export default function EventBuyersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { purchasedTickets } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterValidated, setFilterValidated] = useState<'all' | 'validated' | 'pending'>('all');
 
@@ -56,7 +52,9 @@ export default function EventBuyersScreen() {
   );
   const event = eventData
     ? {
-        ...eventData,
+        id: eventData.id,
+        title: eventData.title,
+        image: eventData.image,
         date: new Date(eventData.date),
         endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
         venue: typeof eventData.venue === 'object' && eventData.venue
@@ -68,7 +66,7 @@ export default function EventBuyersScreen() {
       }
     : null;
 
-  const mockBuyers: TicketBuyer[] = [
+  const mockBuyers: TicketBuyer[] = useMemo(() => [
     {
       id: '1',
       name: 'João Silva',
@@ -119,23 +117,8 @@ export default function EventBuyersScreen() {
       isValidated: true,
       validatedAt: new Date('2025-02-15T20:15:00')
     }
-  ];
+  ], []);
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <LoadingSpinner message="A carregar evento..." />
-      </View>
-    );
-  }
-  if (error || !event) {
-    return (
-      <View style={styles.container}>
-        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
-      </View>
-    );
-  }
-  
   const filteredBuyers = useMemo(() => {
     let buyers = mockBuyers;
     
@@ -158,7 +141,7 @@ export default function EventBuyersScreen() {
     }
     
     return buyers;
-  }, [searchQuery, filterValidated]);
+  }, [searchQuery, filterValidated, mockBuyers]);
   
   const totalBuyers = mockBuyers.length;
   const totalTickets = mockBuyers.reduce((sum, buyer) => sum + buyer.quantity, 0);
@@ -207,32 +190,17 @@ export default function EventBuyersScreen() {
     );
   };
   
-  const handleContactBuyer = (buyer: TicketBuyer, method: 'email' | 'phone') => {
-    if (method === 'email') {
-      Alert.alert(
-        'Contactar por Email',
-        `Enviar email para ${buyer.email}?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Enviar', onPress: () => console.log('Send email to:', buyer.email) }
-        ]
-      );
-    } else {
-      Alert.alert(
-        'Contactar por Telefone',
-        `Ligar para ${buyer.phone}?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ligar', onPress: () => console.log('Call:', buyer.phone) }
-        ]
-      );
-    }
-  };
-  
-  if (!event) {
+  if (isLoading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Evento não encontrado</Text>
+        <LoadingSpinner message="A carregar evento..." />
+      </View>
+    );
+  }
+  if (error || !event) {
+    return (
+      <View style={styles.container}>
+        <ErrorState message={error ? handleError(error) : 'Evento não encontrado'} onRetry={error ? () => refetch() : undefined} />
       </View>
     );
   }

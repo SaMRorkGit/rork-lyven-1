@@ -60,7 +60,10 @@ export default function PromoterEventScreen() {
   );
   const event = eventData
     ? {
-        ...eventData,
+        id: eventData.id,
+        title: eventData.title,
+        image: eventData.image,
+        description: eventData.description,
         date: new Date(eventData.date),
         endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
         venue: typeof eventData.venue === 'object' && eventData.venue
@@ -69,6 +72,7 @@ export default function PromoterEventScreen() {
         promoter: typeof eventData.promoter === 'object' && eventData.promoter
           ? { id: (eventData.promoter as any).id ?? '', name: (eventData.promoter as any).name ?? '', image: (eventData.promoter as any).image ?? '', description: (eventData.promoter as any).description ?? '', verified: !!(eventData.promoter as any).verified, followersCount: (eventData.promoter as any).followersCount ?? 0 }
           : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+        ticketTypes: Array.isArray(eventData.ticketTypes) ? eventData.ticketTypes : [],
       }
     : null;
 

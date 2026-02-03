@@ -3,7 +3,7 @@ import { useLocalSearchParams, router, Stack } from "expo-router";
 import { Calendar, MapPin, ChevronLeft, Share2, Heart, Bell, Clock, Instagram, Facebook, Globe, UserPlus } from "lucide-react-native";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { handleError, NotFoundError } from "@/lib/error-handler";
+import { handleError } from "@/lib/error-handler";
 import { LoadingSpinner, ErrorState } from "@/components/LoadingStates";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCart } from "@/hooks/cart-context";
@@ -43,9 +43,23 @@ export default function EventDetailScreen() {
 
   // Transform backend data to Event format
   const event = eventData ? {
-    ...eventData,
+    id: eventData.id,
+    title: eventData.title,
+    description: eventData.description,
+    image: eventData.image,
     date: new Date(eventData.date),
     endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+    venue: typeof eventData.venue === 'object' && eventData.venue
+      ? { id: (eventData.venue as any).id ?? '', name: (eventData.venue as any).name ?? '', address: (eventData.venue as any).address ?? '', city: (eventData.venue as any).city ?? '', capacity: (eventData.venue as any).capacity ?? 0 }
+      : { id: '', name: '', address: '', city: '', capacity: 0 },
+    promoter: typeof eventData.promoter === 'object' && eventData.promoter
+      ? { id: (eventData.promoter as any).id ?? '', name: (eventData.promoter as any).name ?? '', image: (eventData.promoter as any).image ?? '', description: (eventData.promoter as any).description ?? '', verified: !!(eventData.promoter as any).verified, followersCount: (eventData.promoter as any).followersCount ?? 0 }
+      : { id: '', name: '', image: '', description: '', verified: false, followersCount: 0 },
+    ticketTypes: Array.isArray(eventData.ticketTypes) ? eventData.ticketTypes : [],
+    artists: Array.isArray(eventData.artists) ? eventData.artists : [],
+    isSoldOut: (eventData as any).isSoldOut ?? false,
+    duration: (eventData as any).duration,
+    socialLinks: (eventData as any).socialLinks,
   } : null;
   
   useEffect(() => {

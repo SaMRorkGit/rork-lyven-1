@@ -48,7 +48,16 @@ export default function QRScannerScreen() {
     { id: id ?? '' },
     { enabled: !!id }
   );
-  const event = eventData ? { ...eventData, date: new Date(eventData.date), endDate: eventData.endDate ? new Date(eventData.endDate) : undefined } : null;
+  const event = eventData ? {
+    id: eventData.id,
+    title: eventData.title,
+    image: eventData.image,
+    date: new Date(eventData.date),
+    endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
+    venue: typeof eventData.venue === 'object' && eventData.venue
+      ? { id: (eventData.venue as any).id ?? '', name: (eventData.venue as any).name ?? '', address: (eventData.venue as any).address ?? '', city: (eventData.venue as any).city ?? '', capacity: (eventData.venue as any).capacity ?? 0 }
+      : { id: '', name: '', address: '', city: '', capacity: 0 },
+  } : null;
 
   useEffect(() => {
     if (!permission) {
