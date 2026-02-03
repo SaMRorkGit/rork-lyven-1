@@ -95,6 +95,11 @@ import { deletePriceAlertProcedure } from "./routes/price-alerts/delete";
 import { createVerificationProcedure } from "./routes/identity/create-verification";
 import { getVerificationStatusProcedure } from "./routes/identity/get-status";
 
+import { createCheckoutSessionProcedure } from "./routes/stripe/create-checkout";
+import { getSessionProcedure } from "./routes/stripe/get-session";
+import { getStripeConfigProcedure } from "./routes/stripe/get-config";
+import { createPaymentIntentProcedure } from "./routes/stripe/create-payment-intent";
+
 import { listPaymentMethodsProcedure } from "./routes/payment-methods/list";
 import { createPaymentMethodProcedure } from "./routes/payment-methods/create";
 import { updatePaymentMethodProcedure } from "./routes/payment-methods/update";
@@ -245,6 +250,13 @@ export const appRouter = createTRPCRouter({
   identity: createTRPCRouter({
     createVerification: createVerificationProcedure,
     getStatus: getVerificationStatusProcedure,
+  }),
+  
+  stripe: createTRPCRouter({
+    createCheckout: createCheckoutSessionProcedure,
+    getSession: getSessionProcedure,
+    getConfig: getStripeConfigProcedure,
+    createPaymentIntent: createPaymentIntentProcedure,
   }),
 });
 

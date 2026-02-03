@@ -467,6 +467,101 @@ app.get("/event/:id", async (c) => {
   }
 });
 
+app.post("/api/stripe/webhook", async (c) => {
+  console.log('💳 Stripe webhook received');
+  try {
+    const { getStripe, getStripeWebhookSecret } = await import('./lib/stripe');
+    const stripe = getStripe();
+    const webhookSecret = getStripeWebhookSecret();
+    
+    const body = await c.req.text();
+    const signature = c.req.header('stripe-signature');
+    
+    if (!signature) {
+      console.error('❌ Missing Stripe signature');
+      return c.json({ error: 'Missing signature' }, 400);
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch (err) {
+      console.error('❌ Webhook signature verification failed:', err);
+      return c.json({ error: 'Invalid signature' }, 400);
+    }
+
+    console.log('✅ Stripe event received:', event.type);
+
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        console.log('🎉 Payment completed for session:', session.id);
+        console.log('📦 Session metadata:', session.metadata);
+        
+        const { eventId, ticketTypeId, userId, quantity, pricePerTicket } = session.metadata || {};
+        
+        if (eventId && ticketTypeId && userId && quantity) {
+          const { db, tickets, events } = await import('./db/index');
+          const { eq } = await import('drizzle-orm');
+          const { sendNotification } = await import('./lib/send-notification');
+          
+          const ticketId = `tkt-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+          const qrCode = `${ticketId}-${session.payment_intent}`;
+          
+          const event = await db.query.events.findFirst({
+            where: eq(events.id, eventId),
+          });
+          
+          const validUntil = event ? event.date : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+          
+          await db.insert(tickets).values({
+            id: ticketId,
+            eventId,
+            userId,
+            ticketTypeId,
+            quantity: parseInt(quantity),
+            price: session.amount_total ? session.amount_total / 100 : parseFloat(pricePerTicket || '0') * parseInt(quantity),
+            qrCode,
+            isUsed: false,
+            validUntil,
+          });
+          
+          console.log('✅ Ticket created:', ticketId);
+          
+          await sendNotification({
+            userId,
+            type: 'ticket_sold',
+            title: 'Compra Confirmada! 🎫',
+            message: `O seu bilhete para "${event?.title || 'Evento'}" foi confirmado!`,
+            data: { ticketId, eventId },
+          });
+        }
+        break;
+      }
+      
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object;
+        console.log('💰 Payment intent succeeded:', paymentIntent.id);
+        break;
+      }
+      
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object;
+        console.log('❌ Payment failed:', paymentIntent.id);
+        break;
+      }
+      
+      default:
+        console.log('ℹ️ Unhandled event type:', event.type);
+    }
+
+    return c.json({ received: true });
+  } catch (error) {
+    console.error('❌ Stripe webhook error:', error);
+    return c.json({ error: error instanceof Error ? error.message : 'Webhook error' }, 500);
+  }
+});
+
 app.onError((err, c) => {
   console.error('❌ Backend error:', err);
   console.error('❌ Stack:', err.stack);
